@@ -314,7 +314,6 @@
                 'wss://nostr.mom/',
                 'wss://relay.nostr.band/',
                 'wss://purplepag.es/',
-                'wss://relay.current.fyi/',
                 'wss://offchain.pub/'
             ];
 
@@ -342,7 +341,7 @@
                         // Update status if this is the first connection
                         setStatus(prevStatus => prevStatus === 'connecting' ? 'connected' : prevStatus);
                         
-                        // Subscribe to NIP-34 events (kind 30617)
+                        // Subscribe to Git events (kind 30617)
                         const subscription = JSON.stringify([
                             "REQ",
                             `nip34-sub-${index}`,
@@ -539,7 +538,7 @@
             return html`
                 <div class="container">
                     <div class="header">
-                        <h1>NIP-34 Repository Events</h1>
+                        <h1>Git Repository Events</h1>
                         <p>Displaying Git repository announcements from Nostr</p>
                     </div>
                     
@@ -549,7 +548,7 @@
 
                     ${events.length === 0 && status === 'connected' && html`
                         <div class="no-events">
-                            <h3>No NIP-34 events found yet</h3>
+                            <h3>No Git events found yet</h3>
                             <p>Listening for repository announcements...</p>
                         </div>
                     `}
