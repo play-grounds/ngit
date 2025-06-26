@@ -360,11 +360,22 @@
                                 const nostrEvent = message[2];
                                 if (nostrEvent.kind === 30617) {
                                     setEvents(prev => {
-                                        // Avoid duplicates
-                                        const exists = prev.some(e => e.id === nostrEvent.id);
-                                        if (exists) return prev;
+                                        // Check for existing event by pubkey + d tag combination
+                                        const dTag = nostrEvent.tags?.find(tag => tag[0] === 'd')?.[1];
+                                        const existingIndex = prev.findIndex(e => {
+                                            const existingDTag = e.tags?.find(tag => tag[0] === 'd')?.[1];
+                                            return e.pubkey === nostrEvent.pubkey && existingDTag === dTag;
+                                        });
                                         
-                                        const newEvents = [nostrEvent, ...prev];
+                                        let newEvents;
+                                        if (existingIndex !== -1) {
+                                            // Replace existing event and move to top
+                                            newEvents = [nostrEvent, ...prev.slice(0, existingIndex), ...prev.slice(existingIndex + 1)];
+                                        } else {
+                                            // Add new event
+                                            newEvents = [nostrEvent, ...prev];
+                                        }
+                                        
                                         // Sort by created_at descending
                                         return newEvents.sort((a, b) => b.created_at - a.created_at);
                                     });
@@ -444,10 +455,22 @@
                             const nostrEvent = message[2];
                             if (nostrEvent.kind === 30617) {
                                 setEvents(prev => {
-                                    const exists = prev.some(e => e.id === nostrEvent.id);
-                                    if (exists) return prev;
+                                    // Check for existing event by pubkey + d tag combination
+                                    const dTag = nostrEvent.tags?.find(tag => tag[0] === 'd')?.[1];
+                                    const existingIndex = prev.findIndex(e => {
+                                        const existingDTag = e.tags?.find(tag => tag[0] === 'd')?.[1];
+                                        return e.pubkey === nostrEvent.pubkey && existingDTag === dTag;
+                                    });
                                     
-                                    const newEvents = [nostrEvent, ...prev];
+                                    let newEvents;
+                                    if (existingIndex !== -1) {
+                                        // Replace existing event and move to top
+                                        newEvents = [nostrEvent, ...prev.slice(0, existingIndex), ...prev.slice(existingIndex + 1)];
+                                    } else {
+                                        // Add new event
+                                        newEvents = [nostrEvent, ...prev];
+                                    }
+                                    
                                     return newEvents.sort((a, b) => b.created_at - a.created_at);
                                 });
                             }
