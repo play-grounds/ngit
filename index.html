@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -215,6 +216,70 @@
             font-family: 'SF Mono', monospace;
             border: 1px solid rgba(102, 126, 234, 0.2);
             font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .tag:hover {
+            background: rgba(102, 126, 234, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .tag.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+        }
+
+        .filters-bar {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .filter-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .clear-filters {
+            background: var(--error);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .clear-filters:hover {
+            background: #e53e3e;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .filters-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
 
         .loading {
@@ -293,8 +358,17 @@
             const [events, setEvents] = useState([]);
             const [status, setStatus] = useState('connecting');
             const [connections, setConnections] = useState([]);
+            const [activeFilters, setActiveFilters] = useState(new Set());
+            const [allEvents, setAllEvents] = useState([]);
 
             useEffect(() => {
+                // Parse URL parameters on load
+                const urlParams = new URLSearchParams(window.location.search);
+                const filterParam = urlParams.get('filter');
+                if (filterParam) {
+                    setActiveFilters(new Set(filterParam.split(',')));
+                }
+                
                 connectToRelays();
                 return () => {
                     connections.forEach(conn => {
@@ -304,6 +378,24 @@
                     });
                 };
             }, []);
+
+            useEffect(() => {
+                // Filter events based on active filters (AND logic)
+                if (activeFilters.size === 0) {
+                    setEvents(allEvents);
+                } else {
+                    const filtered = allEvents.filter(event => {
+                        // Event must have ALL active filters (AND logic)
+                        return Array.from(activeFilters).every(filterTag => {
+                            return event.tags?.some(tag => {
+                                const tagString = `${tag[0]}=${tag[1] || ''}`;
+                                return tagString === filterTag;
+                            });
+                        });
+                    });
+                    setEvents(filtered);
+                }
+            }, [allEvents, activeFilters]);
 
             const relays = [
                 'wss://relay.nostr.net/',
@@ -359,7 +451,7 @@
                             if (message[0] === 'EVENT' && message[2]) {
                                 const nostrEvent = message[2];
                                 if (nostrEvent.kind === 30617) {
-                                    setEvents(prev => {
+                                    setAllEvents(prev => {
                                         // Check for existing event by pubkey + d tag combination
                                         const dTag = nostrEvent.tags?.find(tag => tag[0] === 'd')?.[1];
                                         const existingIndex = prev.findIndex(e => {
@@ -454,7 +546,7 @@
                         if (message[0] === 'EVENT' && message[2]) {
                             const nostrEvent = message[2];
                             if (nostrEvent.kind === 30617) {
-                                setEvents(prev => {
+                                setAllEvents(prev => {
                                     // Check for existing event by pubkey + d tag combination
                                     const dTag = nostrEvent.tags?.find(tag => tag[0] === 'd')?.[1];
                                     const existingIndex = prev.findIndex(e => {
@@ -543,19 +635,55 @@
                 return new Date(timestamp * 1000).toLocaleString();
             };
 
+            const handleTagClick = (tag) => {
+                const tagString = `${tag[0]}=${tag[1] || ''}`;
+                const newFilters = new Set(activeFilters);
+                
+                if (newFilters.has(tagString)) {
+                    newFilters.delete(tagString);
+                } else {
+                    newFilters.add(tagString);
+                }
+                
+                setActiveFilters(newFilters);
+                updateURL(newFilters);
+            };
+
+            const clearFilters = () => {
+                setActiveFilters(new Set());
+                updateURL(new Set());
+            };
+
+            const updateURL = (filters) => {
+                const url = new URL(window.location);
+                if (filters.size > 0) {
+                    url.searchParams.set('filter', Array.from(filters).join(','));
+                } else {
+                    url.searchParams.delete('filter');
+                }
+                window.history.pushState({}, '', url);
+            };
+
             const getStatusMessage = () => {
                 const connectedCount = connections.filter(c => c.connected).length;
                 const totalCount = connections.length;
                 
+                let message = '';
                 if (status === 'connecting' && connectedCount === 0) {
-                    return 'Connecting to relays...';
+                    message = 'Connecting to relays...';
                 } else if (connectedCount > 0) {
-                    return `Connected to ${connectedCount}/${totalCount} relays`;
+                    message = `Connected to ${connectedCount}/${totalCount} relays`;
                 } else if (totalCount > 0) {
-                    return 'Connection error - attempting to reconnect...';
+                    message = 'Connection error - attempting to reconnect...';
                 } else {
-                    return 'Initializing...';
+                    message = 'Initializing...';
                 }
+                
+                if (activeFilters.size > 0) {
+                    message += ` • ${events.length}/${allEvents.length} events shown`;
+                }
+                
+                return message;
             };
 
             return html`
@@ -568,6 +696,22 @@
                     <div class="status ${status}">
                         ${getStatusMessage()}
                     </div>
+
+                    ${activeFilters.size > 0 && html`
+                        <div class="filters-bar">
+                            <div class="active-filters">
+                                <span class="filter-label">Active filters (AND):</span>
+                                ${Array.from(activeFilters).map(filter => html`
+                                    <span key=${filter} class="tag active">
+                                        ${filter}
+                                    </span>
+                                `)}
+                            </div>
+                            <button class="clear-filters" onClick=${clearFilters}>
+                                Clear All Filters
+                            </button>
+                        </div>
+                    `}
 
                     ${events.length === 0 && status === 'connected' && html`
                         <div class="no-events">
@@ -637,11 +781,19 @@
                                     
                                     ${event.tags && event.tags.length > 0 && html`
                                         <div class="tags">
-                                            ${event.tags.map((tag, i) => html`
-                                                <span key=${i} class="tag">
-                                                    ${tag[0]}: ${tag[1] ? tag[1].substring(0, 20) : ''}${tag[1] && tag[1].length > 20 ? '...' : ''}
-                                                </span>
-                                            `)}
+                                            ${event.tags.map((tag, i) => {
+                                                const tagString = `${tag[0]}=${tag[1] || ''}`;
+                                                const isActive = activeFilters.has(tagString);
+                                                return html`
+                                                    <span 
+                                                        key=${i} 
+                                                        class="tag ${isActive ? 'active' : ''}"
+                                                        onClick=${() => handleTagClick(tag)}
+                                                    >
+                                                        ${tag[0]}: ${tag[1] ? tag[1].substring(0, 20) : ''}${tag[1] && tag[1].length > 20 ? '...' : ''}
+                                                    </span>
+                                                `;
+                                            })}
                                         </div>
                                     `}
                                 </div>
