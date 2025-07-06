@@ -387,6 +387,12 @@
                     const filtered = allEvents.filter(event => {
                         // Event must have ALL active filters (AND logic)
                         return Array.from(activeFilters).every(filterTag => {
+                            // Check if it's a pubkey filter
+                            if (filterTag.startsWith('pubkey=')) {
+                                const pubkey = filterTag.substring('pubkey='.length);
+                                return event.pubkey === pubkey;
+                            }
+                            // Regular tag filter
                             return event.tags?.some(tag => {
                                 const tagString = `${tag[0]}=${tag[1] || ''}`;
                                 return tagString === filterTag;
@@ -649,6 +655,20 @@
                 updateURL(newFilters);
             };
 
+            const handlePubkeyClick = (pubkey) => {
+                const pubkeyFilter = `pubkey=${pubkey}`;
+                const newFilters = new Set(activeFilters);
+                
+                if (newFilters.has(pubkeyFilter)) {
+                    newFilters.delete(pubkeyFilter);
+                } else {
+                    newFilters.add(pubkeyFilter);
+                }
+                
+                setActiveFilters(newFilters);
+                updateURL(newFilters);
+            };
+
             const clearFilters = () => {
                 setActiveFilters(new Set());
                 updateURL(new Set());
@@ -757,6 +777,17 @@
                                                 </a>
                                             </div>
                                         `}
+                                        
+                                        <div>
+                                            <strong>Pubkey:</strong>
+                                            <span 
+                                                class="repo-url" 
+                                                style="word-break: break-all; cursor: pointer;"
+                                                onClick=${() => handlePubkeyClick(event.pubkey)}
+                                            >
+                                                ${event.pubkey}
+                                            </span>
+                                        </div>
                                         
                                         ${repo.url && html`
                                             <div>
