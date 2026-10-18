@@ -1,837 +1,1196 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NIP-34 Event Viewer</title>
+    <title>ngit · Git repositories on Nostr</title>
+    <meta name="description" content="A live feed of Git repository announcements (NIP-34, kind 30617) streamed from Nostr relays. Search, filter by tag or maintainer, and copy clone URLs.">
+    <meta name="theme-color" content="#f7f6fb" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f0d1a" media="(prefers-color-scheme: dark)">
+    <link rel="canonical" href="https://play-grounds.github.io/ngit/">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="ngit">
+    <meta property="og:title" content="ngit · Git repositories on Nostr">
+    <meta property="og:description" content="A live feed of Git repository announcements (NIP-34) streamed from Nostr relays.">
+    <meta property="og:url" content="https://play-grounds.github.io/ngit/">
+    <meta property="og:image" content="https://play-grounds.github.io/ngit/og-image.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="ngit: Git repositories on Nostr, live">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ngit · Git repositories on Nostr">
+    <meta name="twitter:description" content="A live feed of Git repository announcements (NIP-34) streamed from Nostr relays.">
+    <meta name="twitter:image" content="https://play-grounds.github.io/ngit/og-image.png">
+    <meta name="twitter:image:alt" content="ngit: Git repositories on Nostr, live">
+
     <script type="importmap">
     {
         "imports": {
             "preact": "https://esm.sh/preact@10.19.3",
             "preact/hooks": "https://esm.sh/preact@10.19.3/hooks",
-            "htm/preact": "https://esm.sh/htm@3.1.1/preact"
+            "htm/preact": "https://esm.sh/htm@3.1.1/preact?external=preact"
         }
     }
     </script>
     <style>
         :root {
-            --primary-bg: #faf9f8;
-            --secondary-bg: #f5f3f0;
-            --card-bg: #ffffff;
-            --text-primary: #2d3748;
-            --text-secondary: #718096;
-            --text-muted: #a0aec0;
-            --accent-primary: #667eea;
-            --accent-secondary: #764ba2;
-            --success: #48bb78;
-            --warning: #ed8936;
-            --error: #f56565;
-            --border: #e2e8f0;
-            --shadow: rgba(0, 0, 0, 0.1);
-            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg: #f7f6fb;
+            --surface: #ffffff;
+            --surface-2: #f1eff8;
+            --text: #1c1830;
+            --text-2: #5d5875;
+            --text-3: #8f8aa6;
+            --border: #e4e1ef;
+            --border-strong: #d2cde3;
+            --accent: #7c3aed;
+            --accent-2: #6366f1;
+            --accent-soft: rgba(124, 58, 237, 0.09);
+            --accent-ring: rgba(124, 58, 237, 0.28);
+            --ok: #16a34a;
+            --warn: #d97706;
+            --bad: #dc2626;
+            --shadow: 0 1px 2px rgba(28, 24, 48, 0.04), 0 4px 16px rgba(28, 24, 48, 0.05);
+            --shadow-hover: 0 2px 4px rgba(28, 24, 48, 0.05), 0 12px 32px rgba(28, 24, 48, 0.1);
+            --gradient: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+            color-scheme: light;
         }
 
-        * {
-            box-sizing: border-box;
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f0d1a;
+                --surface: #17142a;
+                --surface-2: #201c38;
+                --text: #ece9f8;
+                --text-2: #aaa4c4;
+                --text-3: #736d90;
+                --border: #2a2545;
+                --border-strong: #3a3460;
+                --accent: #a78bfa;
+                --accent-2: #818cf8;
+                --accent-soft: rgba(167, 139, 250, 0.12);
+                --accent-ring: rgba(167, 139, 250, 0.35);
+                --ok: #4ade80;
+                --warn: #fbbf24;
+                --bad: #f87171;
+                --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.45);
+                color-scheme: dark;
+            }
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
-            padding: 0;
-            background: var(--primary-bg);
-            color: var(--text-primary);
-            line-height: 1.6;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
+
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        button { font: inherit; color: inherit; }
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
         .container {
-            max-width: 1200px;
+            max-width: 1240px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 0 1.5rem 4rem;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding: 2rem 0;
+        /* ---------- Top bar ---------- */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: color-mix(in srgb, var(--bg) 82%, transparent);
+            backdrop-filter: saturate(160%) blur(12px);
+            -webkit-backdrop-filter: saturate(160%) blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .topbar-inner {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: var(--text);
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -0.02em;
+        }
+        .brand:hover { text-decoration: none; }
+        .brand img { width: 30px; height: 30px; display: block; }
+        .brand small {
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: var(--text-3);
+            letter-spacing: 0;
+        }
+
+        .spacer { flex: 1; }
+
+        .relay-pill {
+            position: relative;
+        }
+
+        .relay-pill > button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.35rem 0.8rem;
+            font-size: 0.82rem;
+            color: var(--text-2);
+            cursor: pointer;
+        }
+        .relay-pill > button:hover { border-color: var(--border-strong); }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-3);
+            flex: none;
+        }
+        .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+        .dot.warn { background: var(--warn); animation: pulse 1.2s ease-in-out infinite; }
+        .dot.bad { background: var(--bad); }
+
+        @keyframes pulse { 50% { opacity: 0.35; } }
+
+        .relay-menu {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 0.5rem);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-hover);
+            padding: 0.5rem;
+            min-width: 260px;
+            font-size: 0.85rem;
+        }
+        .relay-menu div {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.35rem 0.5rem;
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--text-2);
+        }
+
+        /* ---------- Hero ---------- */
+        .hero {
+            padding: 2.5rem 0 1.5rem;
+        }
+        .hero h1 {
+            margin: 0 0 0.4rem;
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            font-weight: 800;
+        }
+        .hero h1 span {
             background: var(--gradient);
-            border-radius: 20px;
-            color: white;
-            box-shadow: 0 10px 30px var(--shadow);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-
-        .header h1 {
-            margin: 0 0 0.5rem 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-        }
-
-        .header p {
+        .hero p {
             margin: 0;
-            font-size: 1.1rem;
-            opacity: 0.9;
+            color: var(--text-2);
+            max-width: 640px;
+        }
+
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.75rem;
+            margin-top: 1.25rem;
+        }
+        .stat b {
+            display: block;
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+        .stat span { font-size: 0.8rem; color: var(--text-3); }
+
+        /* ---------- Toolbar ---------- */
+        .toolbar {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .search {
+            flex: 1 1 280px;
+            position: relative;
+        }
+        .search svg {
+            position: absolute;
+            left: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-3);
+            pointer-events: none;
+        }
+        .search input {
+            width: 100%;
+            padding: 0.7rem 0.9rem 0.7rem 2.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .search input::placeholder { color: var(--text-3); }
+        .search input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-ring);
+        }
+        .search kbd {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: var(--mono);
+            font-size: 0.72rem;
+            color: var(--text-3);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.05rem 0.4rem;
+        }
+
+        .segmented {
+            display: inline-flex;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 3px;
+        }
+        .segmented button {
+            border: 0;
+            background: transparent;
+            padding: 0.45rem 0.8rem;
+            border-radius: 9px;
+            font-size: 0.85rem;
+            color: var(--text-2);
+            cursor: pointer;
+        }
+        .segmented button[aria-pressed="true"] {
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* ---------- Filters ---------- */
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-2);
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            max-width: 100%;
+            padding: 0.2rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text-2);
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chip:hover { border-color: var(--accent-ring); color: var(--accent); }
+        .chip.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .chip.active:hover { opacity: 0.88; }
+        .chip.mono { font-family: var(--mono); }
+        .chip .x { opacity: 0.8; font-size: 0.95em; }
+        .link-btn {
+            border: 0;
+            background: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0.2rem 0.4rem;
+        }
+        .link-btn:hover { text-decoration: underline; }
+
+        /* ---------- Grid & cards ---------- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            min-width: 0;
+            transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+            animation: rise 0.35s ease both;
+        }
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            border-color: var(--border-strong);
+            transform: translateY(-2px);
+        }
+        @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+        @media (prefers-reduced-motion: reduce) {
+            .card, .dot.warn { animation: none; }
+            .card:hover { transform: none; }
+        }
+
+        .card-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .repo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.05rem;
+            flex: none;
+            text-transform: uppercase;
+        }
+        .card-title { min-width: 0; flex: 1; }
+        .card-title h2 {
+            margin: 0;
+            font-size: 1.08rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+            overflow-wrap: anywhere;
+        }
+        .card-title h2 a { color: var(--text); }
+        .card-title h2 a:hover { color: var(--accent); }
+        .card-title .d {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--text-3);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .time {
+            font-size: 0.78rem;
+            color: var(--text-3);
+            white-space: nowrap;
+            flex: none;
+        }
+
+        .desc {
+            margin: 0;
+            color: var(--text-2);
+            font-size: 0.92rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            overflow-wrap: anywhere;
+        }
+        .desc.none { color: var(--text-3); font-style: italic; }
+
+        .clone {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .clone code {
+            flex: 1;
+            min-width: 0;
+            padding: 0.45rem 0.7rem;
+            font-family: var(--mono);
+            font-size: 0.76rem;
+            color: var(--text-2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .clone button {
+            border: 0;
+            border-left: 1px solid var(--border);
+            background: transparent;
+            padding: 0.45rem 0.7rem;
+            cursor: pointer;
+            color: var(--text-2);
+            font-size: 0.76rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .clone button:hover { color: var(--accent); background: var(--accent-soft); }
+        .clone button.copied { color: var(--ok); }
+
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem 1rem;
+            font-size: 0.83rem;
+        }
+        .links a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            max-width: 100%;
+            min-width: 0;
+        }
+        .links a svg { flex: none; }
+        .links a span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+        .card-foot {
+            margin-top: auto;
+            padding-top: 0.85rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            min-width: 0;
+        }
+
+        .person {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            border: 0;
+            background: none;
+            padding: 0;
+            cursor: pointer;
+            text-align: left;
+        }
+        .person:hover .person-name { color: var(--accent); }
+        .person.active .person-name { color: var(--accent); font-weight: 700; }
+        .person-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .person-npub {
+            display: block;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text-3);
             font-weight: 400;
         }
 
-        .status {
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            font-weight: 500;
-            backdrop-filter: blur(10px);
-            border: 1px solid transparent;
-            transition: all 0.3s ease;
+        .avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            flex: none;
+            object-fit: cover;
+            background: var(--surface-2);
+            border: 2px solid var(--surface);
         }
-
-        .status.connected {
-            background: rgba(72, 187, 120, 0.1);
-            border-color: rgba(72, 187, 120, 0.2);
-            color: var(--success);
-        }
-
-        .status.connecting {
-            background: rgba(237, 137, 54, 0.1);
-            border-color: rgba(237, 137, 54, 0.2);
-            color: var(--warning);
-        }
-
-        .status.error {
-            background: rgba(245, 101, 101, 0.1);
-            border-color: rgba(245, 101, 101, 0.2);
-            color: var(--error);
-        }
-
-        .event {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .event::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient);
-        }
-
-        .event:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .event-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .event-id {
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: var(--secondary-bg);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            word-break: break-all;
-            border: 1px solid var(--border);
-        }
-
-        .event-time {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .event-content {
-            margin-bottom: 1.5rem;
-        }
-
-        .repo-info {
-            background: var(--secondary-bg);
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            border: 1px solid var(--border);
-        }
-
-        .repo-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: var(--gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 0.5rem;
-            line-height: 1.3;
-        }
-
-        .repo-description {
-            color: var(--text-secondary);
-            font-style: italic;
-            margin-bottom: 1rem;
-            font-size: 1rem;
-        }
-
-        .repo-url {
-            color: var(--accent-primary);
-            text-decoration: none;
-            word-break: break-all;
-            font-weight: 500;
-            transition: color 0.2s ease;
-        }
-
-        .repo-url:hover {
-            color: var(--accent-secondary);
-            text-decoration: underline;
-        }
-
-        .tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .tag {
-            background: rgba(102, 126, 234, 0.1);
-            color: var(--accent-primary);
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-family: 'SF Mono', monospace;
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .tag:hover {
-            background: rgba(102, 126, 234, 0.2);
-            transform: translateY(-1px);
-        }
-
-        .tag.active {
-            background: var(--accent-primary);
-            color: white;
-            border-color: var(--accent-primary);
-        }
-
-        .filters-bar {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .active-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .filter-label {
-            color: var(--text-secondary);
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .clear-filters {
-            background: var(--error);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .clear-filters:hover {
-            background: #e53e3e;
-            transform: translateY(-1px);
-        }
-
-        @media (max-width: 768px) {
-            .filters-bar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
-
-        .loading {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
-        }
-
-        .loading h3 {
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .no-events {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-secondary);
-            background: var(--card-bg);
-            border-radius: 16px;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        }
-
-        .no-events h3 {
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
+        .avatar.sm { width: 24px; height: 24px; }
 
         .maintainers {
-            margin-top: 1rem;
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+        }
+        .maintainers .person { margin-left: -8px; }
+        .maintainers .person:first-child { margin-left: 0; }
+        .maintainers .more {
+            font-size: 0.72rem;
+            color: var(--text-3);
+            margin-left: 0.35rem;
         }
 
-        .maintainer {
-            background: rgba(72, 187, 120, 0.1);
-            color: var(--success);
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            margin-right: 0.5rem;
-            font-family: 'SF Mono', monospace;
-            border: 1px solid rgba(72, 187, 120, 0.2);
-            font-weight: 500;
-            display: inline-block;
-            margin-bottom: 0.25rem;
+        details.raw summary {
+            cursor: pointer;
+            font-size: 0.78rem;
+            color: var(--text-3);
+            list-style: none;
+            user-select: none;
+        }
+        details.raw summary::-webkit-details-marker { display: none; }
+        details.raw summary::before { content: '▸ '; }
+        details.raw[open] summary::before { content: '▾ '; }
+        details.raw summary:hover { color: var(--accent); }
+        details.raw .chips { margin-top: 0.5rem; }
+
+        /* ---------- Empty / loading ---------- */
+        .empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 4rem 1.5rem;
+            color: var(--text-2);
+            border: 1px dashed var(--border-strong);
+            border-radius: 16px;
+        }
+        .empty h3 { margin: 0 0 0.3rem; color: var(--text); }
+
+        .skeleton {
+            height: 210px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: linear-gradient(100deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%);
+            background-size: 300% 100%;
+            animation: shimmer 1.4s linear infinite;
+        }
+        @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+        footer {
+            text-align: center;
+            color: var(--text-3);
+            font-size: 0.82rem;
+            padding: 3rem 0 0;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .event {
-                padding: 1.5rem;
-            }
-            
-            .event-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+        @media (max-width: 640px) {
+            .container, .topbar-inner { padding-left: 1rem; padding-right: 1rem; }
+            .brand small { display: none; }
+            .grid { grid-template-columns: 1fr; }
+            .search kbd { display: none; }
+            .relay-menu { right: -0.5rem; }
         }
     </style>
 </head>
 <body>
     <div id="app"></div>
-    
+
     <script type="module">
         import { render } from 'preact';
-        import { useState, useEffect } from 'preact/hooks';
+        import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
         import { html } from 'htm/preact';
 
-        function App() {
-            const [events, setEvents] = useState([]);
-            const [status, setStatus] = useState('connecting');
-            const [connections, setConnections] = useState([]);
-            const [activeFilters, setActiveFilters] = useState(new Set());
-            const [allEvents, setAllEvents] = useState([]);
+        const RELAYS = [
+            'wss://relay.nostr.net/',
+            'wss://nos.lol/',
+            'wss://relay.damus.io/',
+            'wss://nostr.wine/',
+            'wss://relay.snort.social/',
+            'wss://nostr.mom/',
+            'wss://relay.nostr.band/',
+            'wss://purplepag.es/',
+            'wss://offchain.pub/'
+        ];
+        const REPO_KIND = 30617;
+
+        // ---------- helpers ----------
+
+        // Minimal bech32 encoder for npub display
+        const BECH32 = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+        const polymod = (values) => {
+            const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+            let chk = 1;
+            for (const v of values) {
+                const top = chk >> 25;
+                chk = ((chk & 0x1ffffff) << 5) ^ v;
+                for (let i = 0; i < 5; i++) if ((top >> i) & 1) chk ^= GEN[i];
+            }
+            return chk;
+        };
+        const npubCache = new Map();
+        const toNpub = (hex) => {
+            if (npubCache.has(hex)) return npubCache.get(hex);
+            if (!/^[0-9a-f]{64}$/i.test(hex)) return hex;
+            const bytes = hex.match(/../g).map(b => parseInt(b, 16));
+            const words = [];
+            let acc = 0, bits = 0;
+            for (const b of bytes) {
+                acc = (acc << 8) | b; bits += 8;
+                while (bits >= 5) { bits -= 5; words.push((acc >> bits) & 31); }
+            }
+            if (bits > 0) words.push((acc << (5 - bits)) & 31);
+            const hrp = 'npub';
+            const expanded = [...[...hrp].map(c => c.charCodeAt(0) >> 5), 0, ...[...hrp].map(c => c.charCodeAt(0) & 31)];
+            const mod = polymod([...expanded, ...words, 0, 0, 0, 0, 0, 0]) ^ 1;
+            const checksum = Array.from({ length: 6 }, (_, i) => (mod >> (5 * (5 - i))) & 31);
+            const out = hrp + '1' + [...words, ...checksum].map(w => BECH32[w]).join('');
+            npubCache.set(hex, out);
+            return out;
+        };
+        const shortNpub = (hex) => {
+            const n = toNpub(hex);
+            return n.length > 20 ? `${n.slice(0, 10)}…${n.slice(-4)}` : n;
+        };
+
+        const hue = (str) => {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+            return h % 360;
+        };
+        const gradientFor = (str) => {
+            const h = hue(str);
+            return `linear-gradient(135deg, hsl(${h} 70% 58%), hsl(${(h + 40) % 360} 70% 48%))`;
+        };
+
+        // Only allow http(s) links from untrusted event data
+        const safeUrl = (url) => {
+            try {
+                const u = new URL(url);
+                return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+            } catch { return null; }
+        };
+
+        const timeAgo = (ts) => {
+            const s = Math.max(0, Date.now() / 1000 - ts);
+            const units = [[31536000, 'y'], [2592000, 'mo'], [604800, 'w'], [86400, 'd'], [3600, 'h'], [60, 'm']];
+            for (const [secs, label] of units) {
+                if (s >= secs) return `${Math.floor(s / secs)}${label} ago`;
+            }
+            return 'just now';
+        };
+
+        const tagValue = (event, name) => event.tags?.find(t => t[0] === name)?.[1];
+        const repoKey = (event) => `${event.pubkey}:${tagValue(event, 'd') || ''}`;
+
+        // NIP-34 repository announcement
+        const parseRepo = (event) => {
+            const tags = event.tags || [];
+            const all = (name) => tags.filter(t => t[0] === name).flatMap(t => t.slice(1)).filter(Boolean);
+            const d = tagValue(event, 'd') || '';
+            const maintainers = [...new Set([
+                ...all('maintainers'),
+                ...tags.filter(t => t[0] === 'p').map(t => t[1]).filter(Boolean)
+            ])].filter(pk => pk !== event.pubkey && /^[0-9a-f]{64}$/i.test(pk));
+            return {
+                d,
+                name: tagValue(event, 'name') || d || 'untitled',
+                description: tagValue(event, 'description') || event.content || '',
+                clone: all('clone'),
+                web: all('web').map(safeUrl).filter(Boolean),
+                hashtags: [...new Set(all('t'))],
+                maintainers
+            };
+        };
+
+        const matchesFilter = (event, filter) => {
+            if (filter.startsWith('pubkey=')) {
+                const pk = filter.slice('pubkey='.length);
+                return event.pubkey === pk;
+            }
+            return event.tags?.some(tag => `${tag[0]}=${tag[1] || ''}` === filter);
+        };
+
+        const readURLState = () => {
+            const params = new URLSearchParams(window.location.search);
+            const filter = params.get('filter');
+            return {
+                filters: new Set(filter ? filter.split(',').filter(Boolean) : []),
+                query: params.get('q') || ''
+            };
+        };
+
+        // ---------- relay pool ----------
+
+        function createPool({ onEvent, onStatus }) {
+            const sockets = new Map();
+            const profileQueue = new Set();
+            const requestedProfiles = new Set();
+            let profileTimer = null;
+            let subCounter = 0;
+            let closed = false;
+
+            const sendTo = (ws, msg) => {
+                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+            };
+
+            const requestProfiles = (ws, pubkeys) => {
+                for (let i = 0; i < pubkeys.length; i += 100) {
+                    sendTo(ws, ['REQ', `prof-${++subCounter}`, { kinds: [0], authors: pubkeys.slice(i, i + 100) }]);
+                }
+            };
+
+            const connect = (url, attempt = 0) => {
+                if (closed) return;
+                onStatus(url, 'connecting');
+                let ws;
+                try { ws = new WebSocket(url); } catch { onStatus(url, 'error'); return; }
+                sockets.set(url, ws);
+
+                ws.onopen = () => {
+                    attempt = 0;
+                    onStatus(url, 'open');
+                    sendTo(ws, ['REQ', 'repos', { kinds: [REPO_KIND], limit: 200 }]);
+                    if (requestedProfiles.size) requestProfiles(ws, [...requestedProfiles]);
+                };
+
+                ws.onmessage = (msg) => {
+                    let data;
+                    try { data = JSON.parse(msg.data); } catch { return; }
+                    if (data[0] === 'EVENT' && data[2]) {
+                        onEvent(data[2]);
+                    } else if (data[0] === 'EOSE' && String(data[1]).startsWith('prof-')) {
+                        sendTo(ws, ['CLOSE', data[1]]);
+                    }
+                };
+
+                ws.onclose = () => {
+                    if (sockets.get(url) !== ws) return;
+                    onStatus(url, 'error');
+                    if (closed) return;
+                    const delay = Math.min(60000, 5000 * 2 ** attempt);
+                    setTimeout(() => connect(url, attempt + 1), delay);
+                };
+            };
+
+            RELAYS.forEach(url => connect(url));
+
+            return {
+                wantProfiles(pubkeys) {
+                    for (const pk of pubkeys) {
+                        if (!requestedProfiles.has(pk)) profileQueue.add(pk);
+                    }
+                    if (!profileQueue.size || profileTimer) return;
+                    profileTimer = setTimeout(() => {
+                        profileTimer = null;
+                        const batch = [...profileQueue];
+                        profileQueue.clear();
+                        batch.forEach(pk => requestedProfiles.add(pk));
+                        sockets.forEach(ws => requestProfiles(ws, batch));
+                    }, 400);
+                },
+                close() {
+                    closed = true;
+                    sockets.forEach(ws => ws.close());
+                }
+            };
+        }
+
+        // ---------- components ----------
+
+        const Icon = {
+            search: html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`,
+            copy: html`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>`,
+            check: html`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`,
+            globe: html`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>`
+        };
+
+        function Avatar({ pubkey, profile, small }) {
+            const [broken, setBroken] = useState(false);
+            const src = profile?.picture && safeUrl(profile.picture);
+            const cls = `avatar${small ? ' sm' : ''}`;
+            if (src && !broken) {
+                return html`<img class=${cls} src=${src} alt="" loading="lazy" referrerpolicy="no-referrer" onError=${() => setBroken(true)} />`;
+            }
+            return html`<span class=${cls} style=${{ background: gradientFor(pubkey) }}></span>`;
+        }
+
+        const displayName = (pubkey, profile) =>
+            profile?.display_name || profile?.displayName || profile?.name || shortNpub(pubkey);
+
+        function CopyButton({ text }) {
+            const [copied, setCopied] = useState(false);
+            const copy = async () => {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                } catch {}
+            };
+            return html`
+                <button class=${copied ? 'copied' : ''} onClick=${copy} title="Copy clone URL">
+                    ${copied ? Icon.check : Icon.copy} ${copied ? 'Copied' : 'Copy'}
+                </button>
+            `;
+        }
+
+        function RepoCard({ event, profiles, activeFilters, toggleFilter }) {
+            const repo = useMemo(() => parseRepo(event), [event]);
+            const ownerProfile = profiles[event.pubkey];
+            const ownerFilter = `pubkey=${event.pubkey}`;
+            const shownMaintainers = repo.maintainers.slice(0, 4);
+            const website = repo.web[0];
+
+            return html`
+                <article class="card">
+                    <div class="card-head">
+                        <div class="repo-icon" style=${{ background: gradientFor(repoKey(event)) }}>
+                            ${repo.name.replace(/[^a-z0-9]/gi, '').charAt(0) || '#'}
+                        </div>
+                        <div class="card-title">
+                            <h2>
+                                ${website
+                                    ? html`<a href=${website} target="_blank" rel="noopener noreferrer">${repo.name}</a>`
+                                    : repo.name}
+                            </h2>
+                            ${repo.d && repo.d !== repo.name && html`<div class="d" title="d tag">${repo.d}</div>`}
+                        </div>
+                        <time class="time" datetime=${new Date(event.created_at * 1000).toISOString()}
+                              title=${new Date(event.created_at * 1000).toLocaleString()}>
+                            ${timeAgo(event.created_at)}
+                        </time>
+                    </div>
+
+                    ${repo.description
+                        ? html`<p class="desc" title=${repo.description}>${repo.description}</p>`
+                        : html`<p class="desc none">No description</p>`}
+
+                    ${repo.clone[0] && html`
+                        <div class="clone">
+                            <code title=${repo.clone[0]}>${repo.clone[0]}</code>
+                            <${CopyButton} text=${repo.clone[0]} />
+                        </div>
+                    `}
+
+                    ${repo.web.length > 0 && html`
+                        <div class="links">
+                            ${repo.web.slice(0, 3).map(url => html`
+                                <a key=${url} href=${url} target="_blank" rel="noopener noreferrer" title=${url}>
+                                    ${Icon.globe}<span>${url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+                                </a>
+                            `)}
+                        </div>
+                    `}
+
+                    ${repo.hashtags.length > 0 && html`
+                        <div class="chips">
+                            ${repo.hashtags.map(t => {
+                                const f = `t=${t}`;
+                                return html`
+                                    <button key=${t} class="chip ${activeFilters.has(f) ? 'active' : ''}" onClick=${() => toggleFilter(f)}>
+                                        #${t}
+                                    </button>
+                                `;
+                            })}
+                        </div>
+                    `}
+
+                    <details class="raw">
+                        <summary>${event.tags?.length || 0} tags</summary>
+                        <div class="chips">
+                            ${(event.tags || []).map((tag, i) => {
+                                const f = `${tag[0]}=${tag[1] || ''}`;
+                                const val = tag[1] || '';
+                                return html`
+                                    <button key=${i} class="chip mono ${activeFilters.has(f) ? 'active' : ''}"
+                                            title=${tag.join(' ')} onClick=${() => toggleFilter(f)}>
+                                        ${tag[0]}: ${val.length > 24 ? val.slice(0, 24) + '…' : val}
+                                    </button>
+                                `;
+                            })}
+                        </div>
+                    </details>
+
+                    <div class="card-foot">
+                        <button class="person ${activeFilters.has(ownerFilter) ? 'active' : ''}"
+                                title=${`Filter by ${toNpub(event.pubkey)}`}
+                                onClick=${() => toggleFilter(ownerFilter)}>
+                            <${Avatar} pubkey=${event.pubkey} profile=${ownerProfile} />
+                            <span style="min-width:0">
+                                <span class="person-name">${displayName(event.pubkey, ownerProfile)}</span>
+                                <span class="person-npub">${shortNpub(event.pubkey)}</span>
+                            </span>
+                        </button>
+                        ${shownMaintainers.length > 0 && html`
+                            <div class="maintainers">
+                                ${shownMaintainers.map(pk => html`
+                                    <button key=${pk} class="person" onClick=${() => toggleFilter(`pubkey=${pk}`)}
+                                            title=${`Maintainer: ${displayName(pk, profiles[pk])} (click to filter)`}>
+                                        <${Avatar} pubkey=${pk} profile=${profiles[pk]} small />
+                                    </button>
+                                `)}
+                                ${repo.maintainers.length > shownMaintainers.length && html`
+                                    <span class="more">+${repo.maintainers.length - shownMaintainers.length}</span>
+                                `}
+                            </div>
+                        `}
+                    </div>
+                </article>
+            `;
+        }
+
+        function RelayStatus({ relayStatus }) {
+            const [open, setOpen] = useState(false);
+            const ref = useRef();
+            const entries = Object.entries(relayStatus);
+            const ok = entries.filter(([, s]) => s === 'open').length;
+            const dot = ok > 0 ? 'ok' : entries.some(([, s]) => s === 'connecting') ? 'warn' : 'bad';
 
             useEffect(() => {
-                // Parse URL parameters on load
-                const urlParams = new URLSearchParams(window.location.search);
-                const filterParam = urlParams.get('filter');
-                if (filterParam) {
-                    setActiveFilters(new Set(filterParam.split(',')));
-                }
-                
-                connectToRelays();
-                return () => {
-                    connections.forEach(conn => {
-                        if (conn.ws) {
-                            conn.ws.close();
-                        }
+                const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+                document.addEventListener('click', onDoc);
+                return () => document.removeEventListener('click', onDoc);
+            }, []);
+
+            return html`
+                <div class="relay-pill" ref=${ref}>
+                    <button onClick=${() => setOpen(!open)} aria-expanded=${open}>
+                        <span class="dot ${dot}"></span>
+                        ${ok}/${RELAYS.length} relays
+                    </button>
+                    ${open && html`
+                        <div class="relay-menu">
+                            ${RELAYS.map(url => {
+                                const s = relayStatus[url];
+                                const cls = s === 'open' ? 'ok' : s === 'connecting' ? 'warn' : 'bad';
+                                return html`<div key=${url}><span class="dot ${cls}"></span>${url.replace(/^wss:\/\/|\/$/g, '')}</div>`;
+                            })}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function App() {
+            const initial = useMemo(readURLState, []);
+            const [repos, setRepos] = useState([]);
+            const [profiles, setProfiles] = useState({});
+            const [relayStatus, setRelayStatus] = useState({});
+            const [activeFilters, setActiveFilters] = useState(initial.filters);
+            const [query, setQuery] = useState(initial.query);
+            const [sort, setSort] = useState('recent');
+            const poolRef = useRef();
+            const searchRef = useRef();
+
+            useEffect(() => {
+                const repoMap = new Map();
+                const profileMap = {};
+                let flushQueued = false;
+
+                // Batch state updates so a burst of relay events renders once per frame
+                const flush = () => {
+                    if (flushQueued) return;
+                    flushQueued = true;
+                    requestAnimationFrame(() => {
+                        flushQueued = false;
+                        setRepos([...repoMap.values()]);
+                        setProfiles({ ...profileMap });
                     });
+                };
+
+                const onEvent = (ev) => {
+                    if (ev.kind === REPO_KIND) {
+                        const key = repoKey(ev);
+                        const prev = repoMap.get(key);
+                        if (prev && prev.created_at >= ev.created_at) return;
+                        repoMap.set(key, ev);
+                        poolRef.current?.wantProfiles([ev.pubkey, ...parseRepo(ev).maintainers]);
+                        flush();
+                    } else if (ev.kind === 0) {
+                        const prev = profileMap[ev.pubkey];
+                        if (prev && prev._at >= ev.created_at) return;
+                        try {
+                            profileMap[ev.pubkey] = { ...JSON.parse(ev.content), _at: ev.created_at };
+                            flush();
+                        } catch {}
+                    }
+                };
+
+                const onStatus = (url, s) => setRelayStatus(prev => ({ ...prev, [url]: s }));
+
+                poolRef.current = createPool({ onEvent, onStatus });
+
+                const onPop = () => {
+                    const s = readURLState();
+                    setActiveFilters(s.filters);
+                    setQuery(s.query);
+                };
+                const onKey = (e) => {
+                    if (e.key === '/' && document.activeElement !== searchRef.current) {
+                        e.preventDefault();
+                        searchRef.current?.focus();
+                    } else if (e.key === 'Escape' && document.activeElement === searchRef.current) {
+                        searchRef.current.blur();
+                    }
+                };
+                window.addEventListener('popstate', onPop);
+                window.addEventListener('keydown', onKey);
+
+                return () => {
+                    poolRef.current.close();
+                    window.removeEventListener('popstate', onPop);
+                    window.removeEventListener('keydown', onKey);
                 };
             }, []);
 
-            useEffect(() => {
-                // Filter events based on active filters (AND logic)
-                if (activeFilters.size === 0) {
-                    setEvents(allEvents);
-                } else {
-                    const filtered = allEvents.filter(event => {
-                        // Event must have ALL active filters (AND logic)
-                        return Array.from(activeFilters).every(filterTag => {
-                            // Check if it's a pubkey filter
-                            if (filterTag.startsWith('pubkey=')) {
-                                const pubkey = filterTag.substring('pubkey='.length);
-                                return event.pubkey === pubkey;
-                            }
-                            // Regular tag filter
-                            return event.tags?.some(tag => {
-                                const tagString = `${tag[0]}=${tag[1] || ''}`;
-                                return tagString === filterTag;
-                            });
-                        });
-                    });
-                    setEvents(filtered);
-                }
-            }, [allEvents, activeFilters]);
-
-            const relays = [
-                'wss://relay.nostr.net/',
-                'wss://nos.lol/',
-                'wss://relay.damus.io/',
-                'wss://nostr.wine/',
-                'wss://relay.snort.social/',
-                'wss://nostr.mom/',
-                'wss://relay.nostr.band/',
-                'wss://purplepag.es/',
-                'wss://offchain.pub/'
-            ];
-
-            const connectToRelays = () => {
-                setStatus('connecting');
-                const newConnections = [];
-                
-                relays.forEach((relayUrl, index) => {
-                    const websocket = new WebSocket(relayUrl);
-                    const conn = { url: relayUrl, ws: websocket, connected: false };
-                    
-                    websocket.onopen = () => {
-                        conn.connected = true;
-                        setConnections(prev => {
-                            const updated = [...prev];
-                            const existing = updated.find(c => c.url === relayUrl);
-                            if (existing) {
-                                existing.connected = true;
-                            } else {
-                                updated.push(conn);
-                            }
-                            return updated;
-                        });
-                        
-                        // Update status if this is the first connection
-                        setStatus(prevStatus => prevStatus === 'connecting' ? 'connected' : prevStatus);
-                        
-                        // Subscribe to Git events (kind 30617)
-                        const subscription = JSON.stringify([
-                            "REQ",
-                            `nip34-sub-${index}`,
-                            {
-                                "kinds": [30617],
-                                "limit": 50
-                            }
-                        ]);
-                        websocket.send(subscription);
-                    };
-
-                    websocket.onmessage = (event) => {
-                        try {
-                            const message = JSON.parse(event.data);
-                            if (message[0] === 'EVENT' && message[2]) {
-                                const nostrEvent = message[2];
-                                if (nostrEvent.kind === 30617) {
-                                    setAllEvents(prev => {
-                                        // Check for existing event by pubkey + d tag combination
-                                        const dTag = nostrEvent.tags?.find(tag => tag[0] === 'd')?.[1];
-                                        const existingIndex = prev.findIndex(e => {
-                                            const existingDTag = e.tags?.find(tag => tag[0] === 'd')?.[1];
-                                            return e.pubkey === nostrEvent.pubkey && existingDTag === dTag;
-                                        });
-                                        
-                                        let newEvents;
-                                        if (existingIndex !== -1) {
-                                            // Replace existing event and move to top
-                                            newEvents = [nostrEvent, ...prev.slice(0, existingIndex), ...prev.slice(existingIndex + 1)];
-                                        } else {
-                                            // Add new event
-                                            newEvents = [nostrEvent, ...prev];
-                                        }
-                                        
-                                        // Sort by created_at descending
-                                        return newEvents.sort((a, b) => b.created_at - a.created_at);
-                                    });
-                                }
-                            }
-                        } catch (err) {
-                            console.error('Error parsing message:', err);
-                        }
-                    };
-
-                    websocket.onerror = () => {
-                        conn.connected = false;
-                        setConnections(prev => {
-                            const updated = [...prev];
-                            const existing = updated.find(c => c.url === relayUrl);
-                            if (existing) {
-                                existing.connected = false;
-                            }
-                            return updated;
-                        });
-                    };
-
-                    websocket.onclose = () => {
-                        conn.connected = false;
-                        setConnections(prev => {
-                            const updated = [...prev];
-                            const existing = updated.find(c => c.url === relayUrl);
-                            if (existing) {
-                                existing.connected = false;
-                            }
-                            return updated;
-                        });
-                        
-                        // Attempt to reconnect after 10 seconds
-                        setTimeout(() => {
-                            if (!conn.connected) {
-                                connectToSingleRelay(relayUrl, index);
-                            }
-                        }, 10000);
-                    };
-                    
-                    newConnections.push(conn);
-                });
-                
-                setConnections(newConnections);
+            const updateURL = (filters, q, push = true) => {
+                const url = new URL(window.location);
+                if (filters.size > 0) url.searchParams.set('filter', [...filters].join(','));
+                else url.searchParams.delete('filter');
+                if (q) url.searchParams.set('q', q);
+                else url.searchParams.delete('q');
+                window.history[push ? 'pushState' : 'replaceState']({}, '', url);
             };
 
-            const connectToSingleRelay = (relayUrl, index) => {
-                const websocket = new WebSocket(relayUrl);
-                
-                websocket.onopen = () => {
-                    setConnections(prev => {
-                        const updated = [...prev];
-                        const existing = updated.find(c => c.url === relayUrl);
-                        if (existing) {
-                            existing.ws = websocket;
-                            existing.connected = true;
-                        }
-                        return updated;
-                    });
-                    
-                    const subscription = JSON.stringify([
-                        "REQ",
-                        `nip34-sub-${index}`,
-                        {
-                            "kinds": [30617],
-                            "limit": 50
-                        }
-                    ]);
-                    websocket.send(subscription);
-                };
-
-                websocket.onmessage = (event) => {
-                    try {
-                        const message = JSON.parse(event.data);
-                        if (message[0] === 'EVENT' && message[2]) {
-                            const nostrEvent = message[2];
-                            if (nostrEvent.kind === 30617) {
-                                setAllEvents(prev => {
-                                    // Check for existing event by pubkey + d tag combination
-                                    const dTag = nostrEvent.tags?.find(tag => tag[0] === 'd')?.[1];
-                                    const existingIndex = prev.findIndex(e => {
-                                        const existingDTag = e.tags?.find(tag => tag[0] === 'd')?.[1];
-                                        return e.pubkey === nostrEvent.pubkey && existingDTag === dTag;
-                                    });
-                                    
-                                    let newEvents;
-                                    if (existingIndex !== -1) {
-                                        // Replace existing event and move to top
-                                        newEvents = [nostrEvent, ...prev.slice(0, existingIndex), ...prev.slice(existingIndex + 1)];
-                                    } else {
-                                        // Add new event
-                                        newEvents = [nostrEvent, ...prev];
-                                    }
-                                    
-                                    return newEvents.sort((a, b) => b.created_at - a.created_at);
-                                });
-                            }
-                        }
-                    } catch (err) {
-                        console.error('Error parsing message:', err);
-                    }
-                };
-
-                websocket.onerror = () => {
-                    setConnections(prev => {
-                        const updated = [...prev];
-                        const existing = updated.find(c => c.url === relayUrl);
-                        if (existing) {
-                            existing.connected = false;
-                        }
-                        return updated;
-                    });
-                };
-
-                websocket.onclose = () => {
-                    setConnections(prev => {
-                        const updated = [...prev];
-                        const existing = updated.find(c => c.url === relayUrl);
-                        if (existing) {
-                            existing.connected = false;
-                        }
-                        return updated;
-                    });
-                    
-                    setTimeout(() => {
-                        connectToSingleRelay(relayUrl, index);
-                    }, 10000);
-                };
-            };
-
-            const parseRepoInfo = (event) => {
-                const tags = event.tags || [];
-                const info = {
-                    name: event.content || '',
-                    description: event.content || '',
-                    url: '',
-                    website: '',
-                    maintainers: []
-                };
-
-                tags.forEach(tag => {
-                    if (tag[0] === 'name' && tag[1]) {
-                        info.name = tag[1];
-                    } else if (tag[0] === 'd' && tag[1]) {
-                        if (!info.name) info.name = tag[1];
-                    } else if (tag[0] === 'r' && tag[1]) {
-                        info.url = tag[1];
-                    } else if (tag[0] === 'web' && tag[1]) {
-                        info.website = tag[1];
-                    } else if (tag[0] === 'p' && tag[1]) {
-                        info.maintainers.push(tag[1]);
-                    }
-                });
-
-                // Use event content as name if no name tag is found
-                if (!info.name && event.content) {
-                    info.name = event.content;
-                }
-
-                return info;
-            };
-
-            const formatTime = (timestamp) => {
-                return new Date(timestamp * 1000).toLocaleString();
-            };
-
-            const handleTagClick = (tag) => {
-                const tagString = `${tag[0]}=${tag[1] || ''}`;
-                const newFilters = new Set(activeFilters);
-                
-                if (newFilters.has(tagString)) {
-                    newFilters.delete(tagString);
-                } else {
-                    newFilters.add(tagString);
-                }
-                
-                setActiveFilters(newFilters);
-                updateURL(newFilters);
-            };
-
-            const handlePubkeyClick = (pubkey) => {
-                const pubkeyFilter = `pubkey=${pubkey}`;
-                const newFilters = new Set(activeFilters);
-                
-                if (newFilters.has(pubkeyFilter)) {
-                    newFilters.delete(pubkeyFilter);
-                } else {
-                    newFilters.add(pubkeyFilter);
-                }
-                
-                setActiveFilters(newFilters);
-                updateURL(newFilters);
+            const toggleFilter = (filter) => {
+                const next = new Set(activeFilters);
+                next.has(filter) ? next.delete(filter) : next.add(filter);
+                setActiveFilters(next);
+                updateURL(next, query);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             const clearFilters = () => {
                 setActiveFilters(new Set());
-                updateURL(new Set());
+                setQuery('');
+                updateURL(new Set(), '');
             };
 
-            const updateURL = (filters) => {
-                const url = new URL(window.location);
-                if (filters.size > 0) {
-                    url.searchParams.set('filter', Array.from(filters).join(','));
-                } else {
-                    url.searchParams.delete('filter');
-                }
-                window.history.pushState({}, '', url);
+            const onSearch = (e) => {
+                setQuery(e.target.value);
+                updateURL(activeFilters, e.target.value, false);
             };
 
-            const getStatusMessage = () => {
-                const connectedCount = connections.filter(c => c.connected).length;
-                const totalCount = connections.length;
-                
-                let message = '';
-                if (status === 'connecting' && connectedCount === 0) {
-                    message = 'Connecting to relays...';
-                } else if (connectedCount > 0) {
-                    message = `Connected to ${connectedCount}/${totalCount} relays`;
-                } else if (totalCount > 0) {
-                    message = 'Connection error - attempting to reconnect...';
-                } else {
-                    message = 'Initializing...';
+            const visible = useMemo(() => {
+                const q = query.trim().toLowerCase();
+                const list = repos.filter(ev => {
+                    if (![...activeFilters].every(f => matchesFilter(ev, f))) return false;
+                    if (!q) return true;
+                    const r = parseRepo(ev);
+                    const owner = profiles[ev.pubkey];
+                    const haystack = [
+                        r.name, r.d, r.description, ...r.hashtags, ...r.clone, ...r.web,
+                        owner?.name, owner?.display_name, owner?.nip05, toNpub(ev.pubkey)
+                    ].filter(Boolean).join(' ').toLowerCase();
+                    return haystack.includes(q);
+                });
+                if (sort === 'name') {
+                    return list.sort((a, b) => parseRepo(a).name.localeCompare(parseRepo(b).name, undefined, { sensitivity: 'base' }));
                 }
-                
-                if (activeFilters.size > 0) {
-                    message += ` • ${events.length}/${allEvents.length} events shown`;
+                return list.sort((a, b) => b.created_at - a.created_at);
+            }, [repos, activeFilters, query, sort, profiles]);
+
+            const authors = useMemo(() => new Set(repos.map(r => r.pubkey)).size, [repos]);
+            const connected = Object.values(relayStatus).filter(s => s === 'open').length;
+            const loading = repos.length === 0;
+            const filtering = activeFilters.size > 0 || query;
+
+            const filterLabel = (f) => {
+                if (f.startsWith('pubkey=')) {
+                    const pk = f.slice(7);
+                    return `by ${displayName(pk, profiles[pk])}`;
                 }
-                
-                return message;
+                if (f.startsWith('t=')) return `#${f.slice(2)}`;
+                return f.length > 40 ? f.slice(0, 40) + '…' : f;
             };
 
             return html`
-                <div class="container">
-                    <div class="header">
-                        <h1>Git Repository Events</h1>
-                        <p>Displaying Git repository announcements from Nostr</p>
+                <header class="topbar">
+                    <div class="topbar-inner">
+                        <a class="brand" href="./" onClick=${(e) => { e.preventDefault(); clearFilters(); }}>
+                            <img src="favicon.svg" alt="" />
+                            ngit <small>NIP-34 explorer</small>
+                        </a>
+                        <div class="spacer"></div>
+                        <${RelayStatus} relayStatus=${relayStatus} />
                     </div>
-                    
-                    <div class="status ${status}">
-                        ${getStatusMessage()}
+                </header>
+
+                <main class="container">
+                    <section class="hero">
+                        <h1>Git repositories on <span>Nostr</span></h1>
+                        <p>A live feed of repository announcements (NIP-34, kind 30617) streamed from public relays. Click a hashtag, tag or person to filter.</p>
+                        <div class="stats">
+                            <div class="stat"><b>${repos.length}</b><span>repositories</span></div>
+                            <div class="stat"><b>${authors}</b><span>authors</span></div>
+                            <div class="stat"><b>${connected}</b><span>relays connected</span></div>
+                        </div>
+                    </section>
+
+                    <div class="toolbar">
+                        <label class="search">
+                            ${Icon.search}
+                            <input ref=${searchRef} type="search" placeholder="Search name, description, author, clone URL…"
+                                   value=${query} onInput=${onSearch} aria-label="Search repositories" />
+                            ${!query && html`<kbd>/</kbd>`}
+                        </label>
+                        <div class="segmented" role="group" aria-label="Sort">
+                            <button aria-pressed=${sort === 'recent'} onClick=${() => setSort('recent')}>Recent</button>
+                            <button aria-pressed=${sort === 'name'} onClick=${() => setSort('name')}>A–Z</button>
+                        </div>
                     </div>
 
-                    ${activeFilters.size > 0 && html`
-                        <div class="filters-bar">
-                            <div class="active-filters">
-                                <span class="filter-label">Active filters (AND):</span>
-                                ${Array.from(activeFilters).map(filter => html`
-                                    <span key=${filter} class="tag active">
-                                        ${filter}
-                                    </span>
-                                `)}
+                    ${filtering && html`
+                        <div class="filters">
+                            <span>Showing ${visible.length} of ${repos.length}</span>
+                            ${[...activeFilters].map(f => html`
+                                <button key=${f} class="chip active" title=${`${f} (click to remove)`} onClick=${() => toggleFilter(f)}>
+                                    ${filterLabel(f)} <span class="x">×</span>
+                                </button>
+                            `)}
+                            <button class="link-btn" onClick=${clearFilters}>Clear all</button>
+                        </div>
+                    `}
+
+                    <div class="grid">
+                        ${loading && [0, 1, 2, 3, 4, 5].map(i => html`<div key=${i} class="skeleton"></div>`)}
+                        ${!loading && visible.length === 0 && html`
+                            <div class="empty">
+                                <h3>No matching repositories</h3>
+                                <p>Try a different search, or <button class="link-btn" onClick=${clearFilters}>clear filters</button>.</p>
                             </div>
-                            <button class="clear-filters" onClick=${clearFilters}>
-                                Clear All Filters
-                            </button>
-                        </div>
-                    `}
-
-                    ${events.length === 0 && status === 'connected' && html`
-                        <div class="no-events">
-                            <h3>No Git events found yet</h3>
-                            <p>Listening for repository announcements...</p>
-                        </div>
-                    `}
-                    
-                    ${events.length === 0 && status === 'connecting' && html`
-                        <div class="loading">
-                            <h3>Loading events...</h3>
-                            <p>Connecting to relay and fetching repository data</p>
-                        </div>
-                    `}
-
-                    <div class="events">
-                        ${events.map(event => {
-                            const repo = parseRepoInfo(event);
-                            return html`
-                                <div key=${event.id} class="event">
-                                    <div class="event-header">
-                                        <div class="event-id">
-                                            ID: ${event.id.substring(0, 16)}...
-                                        </div>
-                                        <div class="event-time">
-                                            ${formatTime(event.created_at)}
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="repo-info">
-                                        ${repo.name && html`
-                                            <div class="repo-name">${repo.name}</div>
-                                        `}
-                                        
-                                        ${repo.description && html`
-                                            <div class="repo-description">${repo.description}</div>
-                                        `}
-                                        
-                                        ${repo.website && html`
-                                            <div>
-                                                <a href=${repo.website} target="_blank" class="repo-url">
-                                                    ${repo.website}
-                                                </a>
-                                            </div>
-                                        `}
-                                        
-                                        <div>
-                                            <strong>Pubkey:</strong>
-                                            <span 
-                                                class="repo-url" 
-                                                style="word-break: break-all; cursor: pointer;"
-                                                onClick=${() => handlePubkeyClick(event.pubkey)}
-                                            >
-                                                ${event.pubkey}
-                                            </span>
-                                        </div>
-                                        
-                                        ${repo.url && html`
-                                            <div>
-                                                <strong>Repository:</strong>
-                                                <a href=${repo.url} target="_blank" class="repo-url">
-                                                    ${repo.url}
-                                                </a>
-                                            </div>
-                                        `}
-                                        
-                                        ${repo.maintainers.length > 0 && html`
-                                            <div class="maintainers">
-                                                <strong>Maintainers:</strong>
-                                                ${repo.maintainers.map(pubkey => html`
-                                                    <span key=${pubkey} class="maintainer">
-                                                        ${pubkey.substring(0, 8)}...
-                                                    </span>
-                                                `)}
-                                            </div>
-                                        `}
-                                    </div>
-                                    
-                                    ${event.tags && event.tags.length > 0 && html`
-                                        <div class="tags">
-                                            ${event.tags.map((tag, i) => {
-                                                const tagString = `${tag[0]}=${tag[1] || ''}`;
-                                                const isActive = activeFilters.has(tagString);
-                                                return html`
-                                                    <span 
-                                                        key=${i} 
-                                                        class="tag ${isActive ? 'active' : ''}"
-                                                        onClick=${() => handleTagClick(tag)}
-                                                    >
-                                                        ${tag[0]}: ${tag[1] ? tag[1].substring(0, 20) : ''}${tag[1] && tag[1].length > 20 ? '...' : ''}
-                                                    </span>
-                                                `;
-                                            })}
-                                        </div>
-                                    `}
-                                </div>
-                            `;
-                        })}
+                        `}
+                        ${visible.map(ev => html`
+                            <${RepoCard} key=${repoKey(ev)} event=${ev} profiles=${profiles}
+                                         activeFilters=${activeFilters} toggleFilter=${toggleFilter} />
+                        `)}
                     </div>
-                </div>
+
+                    <footer>
+                        Open source on <a href="https://github.com/play-grounds/ngit" target="_blank" rel="noopener noreferrer">GitHub</a>${' · '}Learn about <a href="https://github.com/nostr-protocol/nips/blob/master/34.md" target="_blank" rel="noopener noreferrer">NIP-34</a>
+                    </footer>
+                </main>
             `;
         }
 

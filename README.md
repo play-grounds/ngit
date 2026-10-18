@@ -13,7 +13,13 @@ NGit connects to multiple Nostr relays and listens for Git repository events (ki
 - **Repository Information**: Displays repository names, descriptions, URLs, and maintainer data
 - **Responsive Design**: Mobile-friendly interface with modern styling
 - **Auto-reconnection**: Automatically reconnects to relays on connection loss
-- **Event Deduplication**: Prevents duplicate events from appearing
+- **Event Deduplication**: Keeps only the newest announcement per pubkey + `d` tag
+- **Search & Sort**: Search by name, description, author or clone URL (press `/`), sort by recent or A–Z
+- **Filters**: Click hashtags, raw tags or people to filter (AND logic); filters and search are kept in the URL
+- **Profiles**: Resolves author/maintainer names and avatars from kind 0 metadata, shows npubs
+- **Clone URLs**: One-click copy of the repository clone URL
+- **Light & Dark Mode**: Follows the system colour scheme
+- **Link Previews**: Open Graph / Twitter card metadata with a 1200×630 preview image
 
 ## How It Works
 
@@ -54,8 +60,8 @@ No installation or build process required - it's a single HTML file with embedde
 
 The application listens for Nostr events with:
 - **Kind**: 30617 (NIP-34 Git repository events)
-- **Tags**: Parsed for repository metadata (name, URL, maintainers, etc.)
-- **Content**: Repository description or name
+- **Tags**: `d`, `name`, `description`, `clone`, `web`, `t` and `maintainers` (per NIP-34)
+- **Content**: Used as a fallback description
 
 ## License
 
